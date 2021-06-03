@@ -12,9 +12,13 @@ namespace DynamicMissionGeneratorAssembly
 	{
 		public KMSelectable SwitchSelectable;
 		public KMSelectable FolderSelectable;
-		public ModuleListItem MissionListItem;
+		public KMSelectable BackFolderSelectable;
+		public KMSelectable AddFolderSelectable;
+
+		public MissionListItem MissionListItemPrefab;
 		public RectTransform MissionList;
 		public GameObject NoMissionsText;
+		public Text FolderText;
 		public RectTransform ContextMenu;
 		public RectTransform CanvasTransform;
 		public Prompt Prompt;
@@ -22,9 +26,24 @@ namespace DynamicMissionGeneratorAssembly
 
 		public KMAudio Audio;
 
-		private string missionsFolder => DynamicMissionGenerator.MissionsFolder;
-		private Dictionary<string, Mission> missions = new Dictionary<string, Mission>();
-		private Mission contextMenuMission;
+		private string subfolder = null;
+		private string missionsFolder => subfolder == null ? DynamicMissionGenerator.MissionsFolder : Path.Combine(DynamicMissionGenerator.MissionsFolder, subfolder);
+		private Dictionary<string, MissionEntry> entries = new Dictionary<string, MissionEntry>();
+		private MissionEntry contextMenuMission;
+
+		public string Subfolder
+		{
+			get { return this.subfolder; }
+			set { this.subfolder = value; LoadMissions(); }
+		}
+
+		private void BackFolder()
+		{
+			if (this.Subfolder == null) return;
+
+			var newFolder = Path.GetDirectoryName(this.Subfolder);
+			this.Subfolder = newFolder == "" ? null : newFolder;
+		}
 
 		public void Start()
 		{
@@ -39,6 +58,23 @@ namespace DynamicMissionGeneratorAssembly
 
 			FolderSelectable.OnInteract += () => { Application.OpenURL($"file://{missionsFolder}"); return false; };
 
+			BackFolderSelectable.OnInteract += () => { BackFolder(); return false; };
+
+			AddFolderSelectable.OnInteract += () => {
+				Prompt.MakePrompt("Add Folder", "", CanvasTransform, SwitchSelectable.Parent, Audio, name => {
+					var targetPath = Path.Combine(missionsFolder, name);
+					if (Directory.Exists(targetPath))
+					{
+						Alert.MakeAlert("Directory Exists", "A directory with that name already exists.", CanvasTransform, SwitchSelectable.Parent);
+						return;
+					}
+
+					Directory.CreateDirectory(targetPath);
+					LoadMissions();
+				});
+				return false; 
+			};
+
 			foreach (Transform button in ContextMenu.transform)
 			{
 				button.GetComponent<Button>().onClick.AddListener(() => MenuClick(button));
@@ -47,15 +83,42 @@ namespace DynamicMissionGeneratorAssembly
 
 		private void LoadMissions()
 		{
-			foreach (Mission mission in missions.Values)
-				Destroy(mission.Item.gameObject);
+			BackFolderSelectable.gameObject.SetActive(this.Subfolder != null);
+			FolderText.text = (this.Subfolder == null ? Path.GetFileName(DynamicMissionGenerator.MissionsFolder) : Path.Combine(Path.GetFileName(DynamicMissionGenerator.MissionsFolder), this.Subfolder)).Replace("\\", "/");
 
-			missions = Directory.GetFiles(missionsFolder).ToDictionary(Path.GetFileNameWithoutExtension, file => {
+			foreach (MissionEntry entry in entries.Values)
+				Destroy(entry.Item.gameObject);
+			entries.Clear();
+
+			// Folders
+			var folders = Directory.GetDirectories(missionsFolder).ToDictionary(Path.GetFileNameWithoutExtension, file => {
 				var name = Path.GetFileNameWithoutExtension(file);
-				Mission mission = null;
+				MissionEntry mission = null;
 
-				var item = Instantiate(MissionListItem);
-				item.transform.Find("MissionName").GetComponent<Text>().text = name;
+				var item = Instantiate(MissionListItemPrefab);
+				item.Name = name;
+				item.Folder = true;
+				item.transform.SetParent(MissionList, false);
+				item.GetComponent<Button>().onClick.AddListener(() => {
+					if (Input.GetKey(KeyCode.LeftShift))
+						return;
+
+					this.Subfolder = this.Subfolder == null ? name : Path.Combine(this.Subfolder, name);
+				});
+
+				mission = new MissionEntry(name, file, item, false);
+				return mission;
+			});
+
+
+			// Missions
+			var missions = Directory.GetFiles(missionsFolder).ToDictionary(Path.GetFileNameWithoutExtension, file => {
+				var name = Path.GetFileNameWithoutExtension(file);
+				MissionEntry mission = null;
+
+				var item = Instantiate(MissionListItemPrefab);
+				item.Name = name;
+				item.Folder = false;
 				item.transform.SetParent(MissionList, false);
 				item.GetComponent<Button>().onClick.AddListener(() => {
 					if (Input.GetKey(KeyCode.LeftShift))
@@ -65,11 +128,15 @@ namespace DynamicMissionGeneratorAssembly
 					DynamicMissionGenerator.Instance.InputPage.LoadMission(mission);
 				});
 
-				mission = new Mission(name, File.ReadAllText(file), item);
+				mission = new MissionEntry(name, File.ReadAllText(file), item, false);
 				return mission;
 			});
 
-			NoMissionsText.SetActive(missions.Count == 0);
+			entries = folders;
+			foreach (var entry in missions)
+				entries.Add(entry.Key, entry.Value);
+
+			NoMissionsText.SetActive(entries.Count == 0);
 		}
 
 		private void WatchMissions()
@@ -101,7 +168,7 @@ namespace DynamicMissionGeneratorAssembly
 				List<RaycastResult> results = new List<RaycastResult>();
 				EventSystem.current.RaycastAll(pointerData, results);
 				
-				if (!Input.GetKey(KeyCode.LeftShift) || results.Count == 0 || results[0].gameObject.transform.parent.GetComponent<ModuleListItem>() == null)
+				if (!Input.GetKey(KeyCode.LeftShift) || results.Count == 0 || results[0].gameObject.transform.parent.GetComponent<MissionListItem>() == null)
 				{
 					ContextMenu.gameObject.SetActive(false);
 					return;
@@ -112,7 +179,7 @@ namespace DynamicMissionGeneratorAssembly
 				ContextMenu.gameObject.SetActive(true);
 
 				var result = results[0];
-				contextMenuMission = missions.First(pair => pair.Value.Item == result.gameObject.transform.parent.GetComponent<ModuleListItem>()).Value;
+				contextMenuMission = entries.First(pair => pair.Value.Item == result.gameObject.transform.parent.GetComponent<MissionListItem>()).Value;
 			}
 		}
 
@@ -153,17 +220,19 @@ namespace DynamicMissionGeneratorAssembly
 			}
 		}
 		
-		public class Mission
+		public class MissionEntry
 		{
 			public string Name;
 			public string Content;
-			public ModuleListItem Item;
+			public MissionListItem Item;
+			public bool Folder;
 
-			public Mission(string name, string content, ModuleListItem item)
+			public MissionEntry(string name, string content, MissionListItem item, bool folder)
 			{
 				Name = name;
 				Content = content;
 				Item = item;
+				Folder = folder;
 			}
 		}
 	}

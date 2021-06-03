@@ -269,7 +269,7 @@ namespace DynamicMissionGeneratorAssembly
 			}
 		}
 
-		internal void LoadMission(Mission mission)
+		internal void LoadMission(MissionEntry mission)
 		{
 			InputField.text = mission.Content;
 			MissionText.text = "Mission: " + mission.Name;
@@ -306,7 +306,7 @@ namespace DynamicMissionGeneratorAssembly
 			void saveMission(string targetPath, string name)
 			{
 				File.WriteAllText(targetPath, InputField.text);
-				LoadMission(new Mission(name, InputField.text, null));
+				LoadMission(new MissionEntry(name, InputField.text, null, false));
 			}
 
 			// When the Mod Selector page is displayed, its KMSelectables are reassigned to the Mod Selector tablet itself.

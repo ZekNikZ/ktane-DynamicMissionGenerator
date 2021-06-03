@@ -90,6 +90,7 @@
     <Compile Include="src\GeneralExtensions.cs" />
     <Compile Include="src\InputField.cs" />
     <Compile Include="src\MissionInputPage.cs" />
+    <Compile Include="src\MissionListItem.cs" />
     <Compile Include="src\ModuleData.cs" />
     <Compile Include="src\ModuleListItem.cs" />
     <Compile Include="src\ReflectionHelper.cs" />
