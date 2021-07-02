@@ -23,6 +23,17 @@ namespace DynamicMissionGeneratorAssembly
 		public static DynamicMissionGenerator Instance;
 		public static string MissionsFolder => Path.Combine(Application.persistentDataPath, "DMGMissions");
 
+		private static string currentSubfolder = null;
+
+		public static string CurrentMissionFolder { 
+			get { 
+				return currentSubfolder == null ? DynamicMissionGenerator.MissionsFolder : Path.Combine(DynamicMissionGenerator.MissionsFolder, currentSubfolder); 
+			}
+			set {
+				currentSubfolder = value;
+			} 
+		}
+
 		internal int? prevRuleSeed;
 
 		private void Start()

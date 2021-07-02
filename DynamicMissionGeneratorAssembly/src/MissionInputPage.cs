@@ -313,7 +313,7 @@ namespace DynamicMissionGeneratorAssembly
 			// We need to add the OK button to it, so SaveButtonSelectable.Parent is used to reference the tablet.
 			Prompt.MakePrompt("Save Mission", missionName ?? "New Mission", CanvasTransform, SaveButtonSelectable.Parent, Audio, name =>
 			{
-				var targetPath = Path.Combine(DynamicMissionGenerator.MissionsFolder, name + ".txt");
+				var targetPath = Path.Combine(DynamicMissionGenerator.CurrentMissionFolder, name + ".txt");
 				if (missionName != name && File.Exists(targetPath))
 				{
 					Confirmation.MakeConfirmation("Overwrite Mission?", "A mission with that name already exists, do you want to overwrite it?", CanvasTransform, SaveButtonSelectable.Parent, () => saveMission(targetPath, name));

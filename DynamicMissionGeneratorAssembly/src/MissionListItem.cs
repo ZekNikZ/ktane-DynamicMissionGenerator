@@ -20,14 +20,14 @@ namespace DynamicMissionGeneratorAssembly
 		public string Name
 		{
 			get => this.name;
-			set { this.name = value; this.NameText.text = value; }
+			set { this.name = value; this.NameText.text = value + (this.folder ? "/" : ""); }
 		}
 
 		private bool folder;
 		public bool Folder
 		{
 			get => this.folder;
-			set { this.folder = value; this.NameText.color = value ? Color.red : Color.black; }
+			set { this.folder = value; this.NameText.color = value ? new Color(0.4f, 0.4f, 0.4f) : Color.black; this.Name = this.name; this.NameText.fontStyle = value ? FontStyle.Bold : FontStyle.Normal; }
 		}
 
 		public void OnClick() { this.Click?.Invoke(this, EventArgs.Empty); }

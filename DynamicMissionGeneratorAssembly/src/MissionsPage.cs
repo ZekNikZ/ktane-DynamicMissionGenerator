@@ -34,7 +34,7 @@ namespace DynamicMissionGeneratorAssembly
 		public string Subfolder
 		{
 			get { return this.subfolder; }
-			set { this.subfolder = value; LoadMissions(); }
+			set { this.subfolder = value; LoadMissions(); DynamicMissionGenerator.CurrentMissionFolder = value; }
 		}
 
 		private void BackFolder()
@@ -84,7 +84,7 @@ namespace DynamicMissionGeneratorAssembly
 		private void LoadMissions()
 		{
 			BackFolderSelectable.gameObject.SetActive(this.Subfolder != null);
-			FolderText.text = (this.Subfolder == null ? Path.GetFileName(DynamicMissionGenerator.MissionsFolder) : Path.Combine(Path.GetFileName(DynamicMissionGenerator.MissionsFolder), this.Subfolder)).Replace("\\", "/");
+			FolderText.text = (this.Subfolder == null ? Path.GetFileName(DynamicMissionGenerator.MissionsFolder) : Path.Combine(Path.GetFileName(DynamicMissionGenerator.MissionsFolder), this.Subfolder)).Replace("\\", "/") + "/";
 
 			foreach (MissionEntry entry in entries.Values)
 				Destroy(entry.Item.gameObject);
